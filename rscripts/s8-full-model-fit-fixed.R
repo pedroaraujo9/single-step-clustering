@@ -1,28 +1,30 @@
 library(tidyverse)
 library(mixff)
+source("rscripts/utils.R")
+
 
 wpp_data = readRDS("data/wpp_data_list.rds")
-wpp_data_tidy = readRDS("data/qx-wpp-male-quality-1960-2019-80.rds")
 
 y = wpp_data$y
 id = wpp_data$id
 time = wpp_data$time
 
 K = 3
-G = 5
-M = 11
+G = 6
+M = 13
 
-w_init_runs = readRDS("models/find-M-fit-z-fixed.rds")
-w_prior = w_init_runs$post_modes$`11`$w_post_prob
-w_init = w_init_runs$post_modes$`11`$w
-z_init = w_find_fixed$model_data$data$z
+w_find = readRDS("models/find-G=6-M=15-z-fixed-fit-2026-04-26 16:20:44.22298.rds")
+w_prior = w_find$post_modes[[as.character(M)]]$w_post_prob
+w_init = w_find$post_modes[[as.character(M)]]$w
+z_init = w_find$model_data$data$z
 
-iters = 400
-burn_in = 200
-thin = 10
-chains = 2
-n_cores = 1
+#### init run ####
 seed = 1
+iters = 1000
+burn_in = 900
+thin = 1
+chains = 1
+n_cores = 1
 
 init_run = fit_model(
   y = y,
@@ -54,21 +56,25 @@ init_run = fit_model(
   add_cluster = TRUE
 )
 
-iters = 100
-burn_in = 50
-thin = 10
-chains = 2
-n_cores = 1
-seed = 1
+last_iter = init_run$post_sample$alpha %>% nrow()
 
 init_list = list(
   w = w_init,
   z = z_init,
-  alpha = init_run$post_sample$alpha %>% compute_post_stat(),
-  mu = init_run$post_sample$mu %>% compute_post_stat(),
-  sigma = init_run$post_sample$sigma %>% compute_post_stat(),
-  beta = init_run$post_sample$beta %>% compute_post_stat()
+  alpha = init_run$post_sample$alpha[last_iter,,],
+  mu = init_run$post_sample$mu[last_iter,,],
+  sigma = init_run$post_sample$sigma[last_iter,,],
+  beta = init_run$post_sample$beta[last_iter,,],
+  psi = init_run$post_sample$psi[last_iter,]
 )
+
+
+#### final fit ####
+iters = 400
+burn_in = 200
+thin = 2
+chains = 3
+n_cores = 1
 
 fit = fit_model(
   y = y,
@@ -97,9 +103,10 @@ fit = fit_model(
   spline_penalty = 1,
   verbose = TRUE,
   mixscat_prior = TRUE,
+  drop_params = c("pw", "pz", "alpha_precision"),
   add_cluster = TRUE
 )
 
-saveRDS(fit, "models/full-model-fit.rds")
+saveRDS(fit, paste0("models/full-model-fit-fixed-", Sys.time(), "-.rds"))
 
 

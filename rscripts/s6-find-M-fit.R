@@ -1,5 +1,5 @@
 library(tidyverse)
-library(mixff)
+library(mmcfa)
 source("rscripts/utils.R")
 
 
@@ -12,7 +12,7 @@ time = wpp_data$time
 #### hyperparameters ####
 K = 3
 G = 6
-M = 20
+M = 15
 n_basis = 10
 center_data = TRUE
 scale_data = FALSE
@@ -22,44 +22,15 @@ init_list = NULL
 seed = 1
 
 #### init run ####
-init_run = fit_model(
-  y = y,
-  id = id,
-  time = time,
-  K = K,
-  G = G,
-  M = M,
-  n_basis = n_basis,
-  iters = 2000,
-  burn_in = 1000,
-  thin = 10,
-  chains = 1,
-  n_cores = 1,
-  center_data = center_data,
-  scale_data = scale_data,
-  seed = seed,
-  z_dirichlet = 1,
-  init_list = NULL,
-  mixscat_prior = FALSE,
-  add_cluster = TRUE
-)
-
-z_init = init_run$post_sample$z %>% comp_class()
-
-init_list = list(
-  alpha = init_run$post_sample$alpha %>% compute_post_stat(),
-  sigma = init_run$post_sample$sigma %>% compute_post_stat(),
-  mu = init_run$post_sample$mu %>% compute_post_stat(),
-  z = z_init,
-  beta = matrix(0, nrow = M * n_basis, ncol = G)
-)
+z_init = readRDS("models/z-est.rds")
+z_init = z_init$z_6
 
 #### find M with z being random ####
-n_init = 100
-init_iters = 100
+n_init = 10
+init_iters = 10
 n_basis = 10
 
-w_find_random = mixff::find_number_clust(
+w_find_random = mmcfa::find_number_clust(
   y = y,
   id = id,
   time = time,
@@ -80,16 +51,16 @@ w_find_random = mixff::find_number_clust(
   verbose = TRUE
 )
 
-saveRDS(w_find_random, paste0("models/find-M-z-random-fit-", Sys.time(), "-.rds"))
+saveRDS(w_find_random, paste0("models/find-G=", G, "-M=", M, "-z-random-fit-", Sys.time(), ".rds"))
 
 #### find w with z being fixed ####
-n_init = 100
-init_iters = 50
+n_init = 10
+init_iters = 10
 n_basis = 10
 
 w_find_fixed = mixscat::find_number_clust(
   M_max = M,
-  z = init_list$z,
+  z = z_init,
   id = id,
   time = time,
   n_basis = n_basis,
@@ -100,7 +71,9 @@ w_find_fixed = mixscat::find_number_clust(
   seed = seed
 )
 
-saveRDS(w_find_fixed, paste0("models/find-M-z-fixed-fit-", Sys.time(), "-.rds"))
+w_find_fixed$z = init_list$z
+
+saveRDS(w_find_random, paste0("models/find-G=", G, "-M=", M, "-z-fixed-fit-", Sys.time(), ".rds"))
 
 
 

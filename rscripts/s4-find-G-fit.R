@@ -1,5 +1,5 @@
 library(tidyverse)
-library(mixff)
+library(mmcfa)
 source("rscripts/utils.R")
 
 wpp_data = readRDS("data/wpp_data_list.rds")
@@ -7,8 +7,8 @@ y = wpp_data$y
 id = wpp_data$id
 time = wpp_data$time
 
-iters = 1000
-burn_in = 500
+iters = 2000
+burn_in = 1000
 thin = 10
 chains = 3
 n_cores = 1
